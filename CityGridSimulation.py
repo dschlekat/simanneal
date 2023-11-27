@@ -1,13 +1,9 @@
 import tkinter as tk
 from tkinter import *
-import random as rand
-import math
 import numpy as np
-from sys import maxsize
-from itertools import permutations
 import time
-from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
+
 
 def listCopy(list):
     newlist = []
@@ -15,179 +11,227 @@ def listCopy(list):
         newlist.append(i)
     return newlist
 
-def rgbtohex(r,g,b):
+
+# convert rgb to hexadecimal
+def rgbtohex(r, g, b):
     return f'#{r:02x}{g:02x}{b:02x}'
 
-def startCity(canvas,canvasSize):
-    rr = 3
 
-    x = 15
-    y = canvasSize - 15
+# creates the starting city
+def boundaryNode(canvas, canvasSize, l):
+    rr = 10  # radius of boundary node
 
-    city1 = canvas.create_oval(x - rr, y - rr, x + rr, y + rr, fill='red')
+    if l == 0:  # create bottom left node
+        x = 15
+        y = canvasSize - 15
+    if l == 1:  # create top right node
+        x = canvasSize - 15
+        y = 15
 
-    return city1
+    boundaryNode = canvas.create_oval(x - rr, y - rr, x + rr, y + rr, fill='red')  # create boundary node
 
-def endCity(canvas, canvasSize):
-    rr = 3
+    return boundaryNode  # return boundary node
 
-    x = canvasSize - 15
-    y = 15
 
-    city2 = canvas.create_oval(x - rr, y - rr, x + rr, y + rr, fill='red')
-
-    return city2
-
+# creates nodes for the chaotic model
 def createNodesChaotic(canvas, city1, city2, canvasSize, n):
-    rr = 4
+    rr = 10  # radius of nodes
 
-    xs1,ys1,xs2,ys2 = canvas.coords(city1)
-    xe1,ye1,xe2,ye2 = canvas.coords(city2)
+    xs1, ys1, xs2, ys2 = canvas.coords(city1)  # get coordinates of the start node
+    xe1, ye1, xe2, ye2 = canvas.coords(city2)  # get coordinates of the end node
 
-    xs = (xs1 + xs2) / 2
-    ys = (ys1 + ys2) / 2
+    xs = (xs1 + xs2) / 2  # true x coordinate of start node
+    ys = (ys1 + ys2) / 2  # true y coordinate of start node
 
-    xe = (xe1 + xe2) / 2
-    ye = (ye1 + ye2) / 2
+    xe = (xe1 + xe2) / 2  # true x coordinate of end node
+    ye = (ye1 + ye2) / 2  # true y coordinate of end node
 
-    xnodes = np.linspace(1,abs(xs-xe),n)
-    ynodes = np.linspace(1, abs(ys - ye), n)
+    xnodes = np.linspace(1, abs(xs - xe), n)  # get x coordinates to distribute the nodes across the canvas
+    ynodes = np.linspace(1, abs(ys - ye), n)  # get y coordinates to distribute the nodes across the canvas
 
-    nodes = np.zeros((n,n))
-    nodeCosts = []
+    nodes = np.zeros((n, n))  # create the matrix of nodes
+    nodeCosts = []  # initialize the list of node costs
 
-    for ind1, i in enumerate(xnodes):
-        for ind2, j in enumerate(ynodes):
-            cost = int(np.random.rand(1) * 255)
-            nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr, fill=rgbtohex(1,cost,1))
-            nodeCosts.append(cost/255)
+    for ind1, i in enumerate(xnodes):  # for x values of nodes
+        for ind2, j in enumerate(ynodes):  # for y values of nodes
+            cost = int(np.random.rand(1) * 255)  # create a cost
+            nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr,
+                                                   fill=rgbtohex(1, cost, 1))  # create node with cost color
+            nodeCosts.append(cost / 255)  # set the cost
 
-    return nodes, nodeCosts
+    return nodes, nodeCosts  # return the node matrix and cost of nodes
 
+
+# creates nodes for the control model
 def createNodesControl(canvas, city1, city2, canvasSize, n):
-    rr = 4
+    rr = 10  # radius of nodes
 
-    xs1,ys1,xs2,ys2 = canvas.coords(city1)
-    xe1,ye1,xe2,ye2 = canvas.coords(city2)
+    xs1, ys1, xs2, ys2 = canvas.coords(city1)  # get coordinates of the start node
+    xe1, ye1, xe2, ye2 = canvas.coords(city2)  # get coordinates of the end node
 
-    xs = (xs1 + xs2) / 2
-    ys = (ys1 + ys2) / 2
+    xs = (xs1 + xs2) / 2  # true x coordinate of start node
+    ys = (ys1 + ys2) / 2  # true y coordinate of start node
 
-    xe = (xe1 + xe2) / 2
-    ye = (ye1 + ye2) / 2
+    xe = (xe1 + xe2) / 2  # true x coordinate of end node
+    ye = (ye1 + ye2) / 2  # true y coordinate of end node
 
-    xnodes = np.linspace(1,abs(xs-xe),n)
-    ynodes = np.linspace(1, abs(ys - ye), n)
+    xnodes = np.linspace(1, abs(xs - xe), n)  # get x coordinates to distribute the nodes across the canvas
+    ynodes = np.linspace(1, abs(ys - ye), n)  # get y coordinates to distribute the nodes across the canvas
 
-    nodes = np.zeros((n,n))
-    nodeCosts = []
+    nodes = np.zeros((n, n))  # create the matrix of nodes
+    nodeCosts = []  # initialize the list of node costs
 
     for ind1, i in enumerate(xnodes):
         for ind2, j in enumerate(ynodes):
-            print(i/j,i,j,ind1,ind2)
-            # cost = int(((ind2+ind1)/(2*n)) * 255)
-            if ind1 > 4 and ind1 < 15 and ind2 > 4 and ind2 < 15:
-                cost = 255
-            else:
-                cost = 1
-            nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr, fill=rgbtohex(1,cost,1))
-            nodeCosts.append(cost/255)
+            print(i / j, i, j, ind1, ind2)
+            cost = int(((ind2 + ind1) / (2 * n)) * 255)
+            # if ind1 > 4 and ind1 < 15 and ind2 > 4 and ind2 < 15:
+            #     cost = 255
+            # else:
+            #     cost = 1
+            nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr,
+                                                   fill=rgbtohex(1, cost, 1))
+            nodeCosts.append(cost / 255)
 
-    return nodes, nodeCosts
+    return nodes, nodeCosts  # return the node matrix and cost of nodes
 
-def initialPath(nodes,nodeCosts,n):
-    startNode = nodes[-1,0]
-    endNode = nodes[0,-1]
 
-    path = [startNode]
-    index = startNode
+# creates nodes for the valley model
+def createNodesValley(canvas, city1, city2, canvasSize, n):
+    rr = 33  # radius of nodes
 
-    for i in range(n-1):
+    xs1, ys1, xs2, ys2 = canvas.coords(city1)  # get coordinates of the start node
+    xe1, ye1, xe2, ye2 = canvas.coords(city2)  # get coordinates of the end node
+
+    xs = (xs1 + xs2) / 2  # true x coordinate of start node
+    ys = (ys1 + ys2) / 2  # true y coordinate of start node
+
+    xe = (xe1 + xe2) / 2  # true x coordinate of end node
+    ye = (ye1 + ye2) / 2  # true y coordinate of end node
+
+    xnodes = np.linspace(1, abs(xs - xe), n)  # get x coordinates to distribute the nodes across the canvas
+    ynodes = np.linspace(1, abs(ys - ye), n)  # get y coordinates to distribute the nodes across the canvas
+
+    nodes = np.zeros((n, n))  # create the matrix of nodes
+    # initialize the list of node costs
+    nodeCosts = [1, 1, 1, .75, .5, .25, 0, 0, 0, 0,
+                 1, 1, .75, .75, .5, .25, 0, .25, .25, 0,
+                 1, .75, .5, .5, .25, .25, 0, .25, .25, 0,
+                 .75, .5, .25, .25, 0, 0, 0, .25, .25, 0,
+                 .5, .25, 0, 0, 0, .25, .25, .5, .25, 0,
+                 .25, 0, 0, .25, .25, .5, .5, .25, .25, 0,
+                 .25, 0, .25, .5, .5, .5, .25, 0, 0, 0,
+                 .25, 0, .25, .25, .25, .25, .25, 0, .25, .25,
+                 .25, 0, .25, 0, 0, 0, 0, 0, .25, .5,
+                 0, 0, 0, 0, .25, .25, .25, .25, .5, .75]
+
+    h = 0
+    for ind1, i in enumerate(xnodes):
+        for ind2, j in enumerate(ynodes):
+            nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr,
+                                                        fill=rgbtohex(1, int(nodeCosts[h] * 255), 1))
+            h += 1
+
+    return nodes, nodeCosts  # return the node matrix and cost of nodes
+
+
+# create the initial path
+def initialPath(nodes, nodeCosts, n):
+    startNode = nodes[-1, 0]  # get the first node
+    endNode = nodes[0, -1]  # get the last node
+
+    path = [startNode]  # start the path as a list with the first node
+    index = startNode  # get the index as the first node
+
+    # create a loop to gather all nodes needed and append them
+    for i in range(n - 1):
         index += 1
         path.append(index)
         index -= n
         path.append(index)
 
-    totcost = 0
+    return path  # return the initial path
 
-    for ind, i in enumerate(path):
+
+# create a function to return the cost of some path
+def pathCost(path, nodeCosts):
+    totcost = 0  # initialize the total cost
+
+    # create a loop to add the cost element of every path element
+    for i in path:
         totcost += nodeCosts[int(i - 3)]
 
-    return path
+    return totcost  # return the total cost of the path
 
-def pathCost(path,nodeCosts):
-    totcost = 0
 
-    for i in path:
-        totcost += nodeCosts[int(i-3)]
+# create a function to update the path nodes
+def optimizePath(path, nodeCosts, n, iters, npaths):
+    oldPath = listCopy(path)  # initialize the old path
+    bestPath = path
 
-    return totcost
+    costs = []  # initialize the list of costs
+    when = list(np.linspace(1, iters, npaths + 1, dtype="int"))  # create a list of which iterations to plot the cost of
+    eff = 0  # initialize the number of effective path modifications
 
-def optimizePath(path,nodes,nodeCosts,n):
-    path = path[1:-1]
-    oldPath = listCopy(path)
-
-    costs = []
-    iters = 1000
-    when = []
-    eff = 0
-
+    # create a loop for the number of iterations chosen
     for i in range(iters):
-        nodeSwap = np.random.randint(0, ((n - 2) * 2))
-        direc = np.random.randint(0, 2)
+        nodeSwap = np.random.randint(0, ((n - 2) * 2) + 2)  # randomly choose a node to be attempted to be modified
+        direc = np.random.randint(0, 2)  # choose which direction to modify the node
 
-        # if direc == 0 and path[nodeSwap] > n + 1 and ((path[nodeSwap] + 1) % n) != 0:
-        #     if path[nodeSwap - 1] + 1 == path[nodeSwap] and path[nodeSwap + 1] + n == path[nodeSwap]:
-        #         path[nodeSwap] -= (n+1)
-        #
-        # elif direc == 1 and path[nodeSwap] < n * n - 2 and ((path[nodeSwap] + 2) % n) != 0:
-        #     if path[nodeSwap - 1] - n == path[nodeSwap] and path[nodeSwap + 1] - 1 == path[nodeSwap]:
-        #         path[nodeSwap] += (n+1)
+        oldNode = path[nodeSwap]  # set the old node
 
+        # create statements to maintain a proper path and update the path
         if direc == 0 and path[nodeSwap] > n + 1:
             if path[nodeSwap - 1] + 1 == path[nodeSwap] and path[nodeSwap + 1] + n == path[nodeSwap]:
-                path[nodeSwap] -= (n+1)
+                path[nodeSwap] -= (n + 1)
                 eff += 1
 
         elif direc == 1 and path[nodeSwap] < n * n - 2:
             if path[nodeSwap - 1] - n == path[nodeSwap] and path[nodeSwap + 1] - 1 == path[nodeSwap]:
-                path[nodeSwap] += (n+1)
+                path[nodeSwap] += (n + 1)
                 eff += 1
 
-        currPath = listCopy(path)
+        # test if the path modification lowered the cost
+        if nodeCosts[int(path[nodeSwap] - 3)] < nodeCosts[int(oldNode - 3)]:
+            oldPath = listCopy(path)  # set the old path as the current path
+            bestPath = path  # set the best path as the path
 
-        if pathCost(currPath,nodeCosts) < pathCost(oldPath,nodeCosts):
-            oldPath = listCopy(currPath)
-            # drawPath(canvas,oldPath)
+
         else:
+            # choose a random value
             val = np.random.rand(1)
-            if val > i/iters:
-                oldPath = listCopy(currPath)
-                # drawPath(canvas, oldPath)
+
+            # give the path the possibility to still be modified
+            if val > i / iters:
+                oldPath = listCopy(path)
             else:
                 path = listCopy(oldPath)
 
+        # create a statement to add to the list of which iterations to be plotted
         if i in when:
-            costs.append(pathCost(path,nodeCosts))
-            drawPath(canvas,oldPath,city1,city2,i/iters)
+            costs.append(pathCost(path, nodeCosts))
+            drawPath(canvas, oldPath, i / iters)
 
-    print(eff)
-    print(costs)
-    plt.plot(when[:-1],costs,color='red',marker='o')
+    # plot the optimizations
+    plt.plot(when[:-1], costs, color='green', marker='o')
     plt.xlabel("Path Modifications")
     plt.ylabel("Cost")
     plt.title("Optimization")
-    # plt.show()
-    return path
+    plt.show()
 
-def drawPath(canvas,path,city1,city2,iters):
+    return bestPath  # return the best path
 
-    color = rgbtohex(int(iters * 255),1,int((1-iters) * 255))
 
-    w = 2
-    for ind in range(len(path)-1):
+# create a function to draw the path
+def drawPath(canvas, path, iters):
+    color = rgbtohex(int(iters * 255), 1, int((1 - iters) * 255))  # get the color of the path
+
+    w = 2  # create the width of the path blocks
+
+    # create a loop to draw the path blocks
+    for ind in range(len(path) - 1):
         xs1, ys1, xs2, ys2 = canvas.coords(int(path[ind]))
-        xe1, ye1, xe2, ye2 = canvas.coords(int(path[ind+1]))
+        xe1, ye1, xe2, ye2 = canvas.coords(int(path[ind + 1]))
 
         xs = (xs1 + xs2) / 2
         ys = (ys1 + ys2) / 2
@@ -195,48 +239,41 @@ def drawPath(canvas,path,city1,city2,iters):
         xe = (xe1 + xe2) / 2
         ye = (ye1 + ye2) / 2
 
-        canvas.create_rectangle(xs-w,ys-w,xe+w,ye+w,fill=color,outline=color)
+        canvas.create_rectangle(xs - w, ys - w, xe + w, ye + w, fill=color, outline=color)
 
-    xs1, ys1, xs2, ys2 = canvas.coords(city2)
-    xe1, ye1, xe2, ye2 = canvas.coords(int(path[0]))
 
-    xs = (xs1 + xs2) / 2
-    ys = (ys1 + ys2) / 2
-
-    xe = (xe1 + xe2) / 2
-    ye = (ye1 + ye2) / 2
-
-    canvas.create_rectangle(xs-w, ys-w, xe+w, ye+w, fill=color, outline=color)
-
-    xs1, ys1, xs2, ys2 = canvas.coords(int(path[-1]))
-    xe1, ye1, xe2, ye2 = canvas.coords(city1)
-
-    xs = (xs1 + xs2) / 2
-    ys = (ys1 + ys2) / 2
-
-    xe = (xe1 + xe2) / 2
-    ye = (ye1 + ye2) / 2
-
-    canvas.create_rectangle(xs-w, ys-w, xe+w, ye+w, fill=color, outline=color)
-
-canvasSize = 600
-n = 5
+# set the canvas size, size of grid, number of iterations, and number of paths to plot
+canvasSize = 800
+n = 10
+iters = 100000
+npaths = 10
 
 root = Tk()
 
-canvas = Canvas(height=canvasSize,width=canvasSize)
+canvas = Canvas(height=canvasSize, width=canvasSize)
 canvas.pack()
 
-city1 = startCity(canvas, canvasSize)
-city2 = endCity(canvas, canvasSize)
-nodes, nodeCosts = createNodesChaotic(canvas,city1,city2,canvasSize,n)
-path = initialPath(nodes,nodeCosts,n)
-initialpathCost = pathCost(path,nodeCosts)
+city1 = boundaryNode(canvas, canvasSize, 0)  # create the first node
+city2 = boundaryNode(canvas, canvasSize, 1)  # create the last node
 
-path = optimizePath(path,nodes,nodeCosts,n)
-drawPath(canvas,path,city1,city2,1)
-finalpathCost = pathCost(path,nodeCosts)
+nodes, nodeCosts = createNodesChaotic(canvas, city1, city2, canvasSize, n)
+# nodes, nodeCosts = createNodesControl(canvas, city1, city2, canvasSize, n)
+# nodes, nodeCosts = createNodesValley(canvas,city1,city2,canvasSize,n)
 
-print(initialpathCost,finalpathCost)
+path = initialPath(nodes, nodeCosts, n)  # create the initial path
+initialpathCost = pathCost(path, nodeCosts)  # find the initial path cost
+
+startTime = time.time()  # start time
+path = optimizePath(path, nodeCosts, n, iters, npaths)  # run the optimization function
+endTime = time.time()  # end time
+
+drawPath(canvas, path, 1)  # draw the path
+finalpathCost = pathCost(path, nodeCosts)  # find the final cost
+
+# print details
+print("Computation time: " + str(round(endTime - startTime, 3)) + " seconds" +
+      "\nInitial cost: " + str(round(initialpathCost, 4)) +
+      "\nFinal cost: " + str(round(finalpathCost, 4)) +
+      "\nChange in cost: " + str(round(finalpathCost - initialpathCost, 4)))
 
 root.mainloop()
