@@ -35,7 +35,7 @@ def boundaryNode(canvas, canvasSize, l):
 
 # creates nodes for the chaotic model
 def createNodesChaotic(canvas, city1, city2, canvasSize, n):
-    rr = 10  # radius of nodes
+    rr = 5  # radius of nodes
 
     xs1, ys1, xs2, ys2 = canvas.coords(city1)  # get coordinates of the start node
     xe1, ye1, xe2, ye2 = canvas.coords(city2)  # get coordinates of the end node
@@ -56,7 +56,7 @@ def createNodesChaotic(canvas, city1, city2, canvasSize, n):
         for ind2, j in enumerate(ynodes):  # for y values of nodes
             cost = int(np.random.rand(1) * 255)  # create a cost
             nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr,
-                                                   fill=rgbtohex(1, cost, 1))  # create node with cost color
+                                                   fill=rgbtohex(cost, cost, cost))  # create node with cost color
             nodeCosts.append(cost / 255)  # set the cost
 
     return nodes, nodeCosts  # return the node matrix and cost of nodes
@@ -90,7 +90,7 @@ def createNodesControl(canvas, city1, city2, canvasSize, n):
             # else:
             #     cost = 1
             nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr,
-                                                   fill=rgbtohex(1, cost, 1))
+                                                   fill=rgbtohex(cost, cost, cost))
             nodeCosts.append(cost / 255)
 
     return nodes, nodeCosts  # return the node matrix and cost of nodes
@@ -129,7 +129,7 @@ def createNodesValley(canvas, city1, city2, canvasSize, n):
     for ind1, i in enumerate(xnodes):
         for ind2, j in enumerate(ynodes):
             nodes[ind1, ind2] = canvas.create_oval(i + 15 - rr, j + 15 - rr, i + 15 + rr, j + 15 + rr,
-                                                        fill=rgbtohex(1, int(nodeCosts[h] * 255), 1))
+                                                   fill=rgbtohex(1, int(nodeCosts[h] * 255), 1))
             h += 1
 
     return nodes, nodeCosts  # return the node matrix and cost of nodes
@@ -172,9 +172,12 @@ def optimizePath(path, nodeCosts, n, iters, npaths):
     costs = []  # initialize the list of costs
     when = list(np.linspace(1, iters, npaths + 1, dtype="int"))  # create a list of which iterations to plot the cost of
     eff = 0  # initialize the number of effective path modifications
+    smallest = path[int(n / 2)]
+    largest = path[int(n / 2)]
 
     # create a loop for the number of iterations chosen
     for i in range(iters):
+        print(str(round((i / iters) * 100, 3)) + "%")
         nodeSwap = np.random.randint(0, ((n - 2) * 2) + 2)  # randomly choose a node to be attempted to be modified
         direc = np.random.randint(0, 2)  # choose which direction to modify the node
 
@@ -210,7 +213,7 @@ def optimizePath(path, nodeCosts, n, iters, npaths):
         # create a statement to add to the list of which iterations to be plotted
         if i in when:
             costs.append(pathCost(path, nodeCosts))
-            drawPath(canvas, oldPath, i / iters)
+            drawPath(canvas, oldPath, i / iters, 1)
 
     # plot the optimizations
     plt.plot(when[:-1], costs, color='green', marker='o')
@@ -223,10 +226,13 @@ def optimizePath(path, nodeCosts, n, iters, npaths):
 
 
 # create a function to draw the path
-def drawPath(canvas, path, iters):
-    color = rgbtohex(int(iters * 255), 1, int((1 - iters) * 255))  # get the color of the path
+def drawPath(canvas, path, iters, params):
+    if params == 1:
+        color = rgbtohex(int(iters * 255), 1, int((1 - iters) * 255))  # get the color of the path
+    elif params == 0:
+        color = 'orange'
 
-    w = 2  # create the width of the path blocks
+    w = 0.7  # create the width of the path blocks
 
     # create a loop to draw the path blocks
     for ind in range(len(path) - 1):
@@ -242,11 +248,13 @@ def drawPath(canvas, path, iters):
         canvas.create_rectangle(xs - w, ys - w, xe + w, ye + w, fill=color, outline=color)
 
 
-# set the canvas size, size of grid, number of iterations, and number of paths to plot
+# set the canvas size, size of grid, number of paths to plot, size of iterations to map, and number of runs for each
+# of those iterations
 canvasSize = 800
-n = 10
-iters = 100000
+n = 40
 npaths = 10
+trials = [100000]
+runs = 1
 
 root = Tk()
 
@@ -264,16 +272,38 @@ path = initialPath(nodes, nodeCosts, n)  # create the initial path
 initialpathCost = pathCost(path, nodeCosts)  # find the initial path cost
 
 startTime = time.time()  # start time
-path = optimizePath(path, nodeCosts, n, iters, npaths)  # run the optimization function
-endTime = time.time()  # end time
+allx = []
+ally = []
+for j in range(runs):
+    deltaCosts = []
+    for ind, i in enumerate(trials):
+        currpath = optimizePath(path, nodeCosts, n, int(i), npaths)  # run the optimization function
 
-drawPath(canvas, path, 1)  # draw the path
-finalpathCost = pathCost(path, nodeCosts)  # find the final cost
+        drawPath(canvas, currpath, 1, 1)  # draw the path
+        finalpathCost = pathCost(currpath, nodeCosts)  # find the final cost
+        deltaCosts.append(finalpathCost - initialpathCost)
+    for ind, i in enumerate(deltaCosts):
+        allx.append(np.log10(trials[ind]))
+        ally.append(deltaCosts[ind])
+    plt.scatter(np.log10(trials), deltaCosts, color='red')
+    plt.xlabel("Total number of iterations (log10)")
+    plt.ylabel("Change in cost")
+    plt.title("Relationship between more iterations and cost")
+
+m, b = np.polyfit(allx, ally, 1)
+
+xvals = np.linspace(min(allx), max(allx), 2)
+yvals = (m * xvals) + b
+
+plt.plot(xvals, yvals, color='black')
+plt.show()
+endTime = time.time()  # end time
 
 # print details
 print("Computation time: " + str(round(endTime - startTime, 3)) + " seconds" +
       "\nInitial cost: " + str(round(initialpathCost, 4)) +
       "\nFinal cost: " + str(round(finalpathCost, 4)) +
-      "\nChange in cost: " + str(round(finalpathCost - initialpathCost, 4)))
+      "\nChange in cost: " + str(round(finalpathCost - initialpathCost, 4)) +
+      "\nChange in cost per 10 times iterations: " + str(m))
 
 root.mainloop()
