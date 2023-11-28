@@ -25,7 +25,7 @@ def getDistances(canvas, cities):
 
     return(distances)
 
-def travellingsalesman1(c, order):
+def travellingsalesman1(c, order): #greedy
     global cost
     adj_vertex = 999
     min_val = 999
@@ -49,7 +49,7 @@ def travellingsalesman1(c, order):
 
     travellingsalesman1(adj_vertex, order)
 
-def travellingsalesman2(graph, s, n, order):
+def travellingsalesman2(graph, s, n, order): 
     vertex = []
     for i in range(n):
         if i != s:
@@ -106,7 +106,7 @@ def travellingsalesman3(objective, bounds, n_iterations, step_size, temp):
          # store the new current point
          curr, curr_eval = candidate, candidate_eval
 
-    return [best, best_eval]
+     return [best, best_eval]
 
 def Cities(canvas,canvasSize,n):
     cities = []

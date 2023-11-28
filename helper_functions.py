@@ -29,6 +29,22 @@ def rand_cities(cities, dimensions):
 
     return coords
 
+#===========================================
+# 'Circle' coordinate generator
+# Inputs:  cities     = number of desired cities generated
+# Outputs: coords     = array of n cities arranged in a 'circle'
+def circle_cities(cities):
+    # Define the radius of the regular polygon
+    radius = 0.4  # Adjust as needed
+
+    # Calculate the angle between each city in radians
+    angle = 2 * math.pi / cities
+
+    # Generate coordinates for cities
+    coords = np.array([(0.5 + radius * math.cos(i * angle), 0.5 + radius * math.sin(i * angle)) for i in range(cities)])
+
+    return coords
+
 
 #===========================================
 # Random city coordinate generator
