@@ -5,6 +5,7 @@ This document will contain the code for the classic traveling salesman problem, 
 import argparse                  
 from argparse import RawTextHelpFormatter
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 
@@ -21,10 +22,6 @@ def init(p_type, N):
         coords = helper.circle_cities(int(N))
     elif (p_type == 'random2D'):
         coords = helper.rand_cities(int(N),2)
-    elif (p_type == 'random3D'):
-        coords = helper.rand_cities(int(N),3)
-    elif (p_type == 'USA'):
-        coords = helper.USA_cities(int(N))
     else:
         raise Exception("[init]: invalid p_type = %s" % (p_type))
 
@@ -37,37 +34,16 @@ def init(p_type, N):
 # output: E      : energy of path
 def energy(S, coords):
     E = 0
-    for i in range(len(S)):
-        E = E + coords[int(S[i-1])][0] * coords[int(S[i])][1] - coords[int(S[i-1])][1] * coords[int(S[i])][0]
-        
+    coords = coords[S]
+
+    for i in range(len(coords)-1):
+        E += calculate_distance(coords[i-len(coords)+1][0], coords[i-len(coords)+1][1], coords[i][0], coords[i][1])
+
     return E
 
-#===========================================
-# Greedy algorithm for traveling salesman problem
-# input : coords : positions of stops, list of 2 or 3D arrays
-# output: S      : list of best paths
-#         E      : list of energies
-def greedy_path(coords):
-    N = len(coords)
-    S = np.zeros(N)
-    S[0] = np.random.randint(0,N)
-
-    distance = cdist(coords, coords, 'euclidean')
-
-    visited = [False] * N
-
-    for i in range(N):
-        distance[i,i] = np.inf
-
-    for i in range(N):
-        current = S[i]
-        S[i+1] = np.argmin(distance[i,:])
-        visited[int(S[i])] = True
-
-    E = energy(S, coords)
-
-
-    return S, E
+def calculate_distance(starting_x, starting_y, destination_x, destination_y):
+    distance = math.hypot(destination_x - starting_x, destination_y - starting_y)  # calculates Euclidean distance (straight-line) distance between two points
+    return distance
 
 #===========================================
 # Simulated annealing algorithm for traveling salesman problem
@@ -88,23 +64,19 @@ def anneal_path(coords, K):
 
         S_new = S
 
-        # u = np.random.uniform(-1,1)
-        # if u < 0:
-        #     # randomly swap two cities
-        #     i = np.random.randint(0,N)
-        #     j = np.random.randint(0,N)
-        #     S_new[i], S_new[j] = S[j], S[i]
-        # else:
-        #     # randomly swap a subset of cities
-        #     i = np.random.randint(0,N)
-        #     j = np.random.randint(0,N)
-        #     if i > j:
-        #         i,j = j,i
-        #     S_new[i:j] = S[i:j][::-1]
-
-        i = np.random.randint(0,N)
-        j = np.random.randint(0,N)
-        S_new[i], S_new[j] = S[j], S[i]
+        u = np.random.rand(1)
+        if u > 0.2:
+            # randomly swap two cities
+            i = np.random.randint(0,N)
+            j = np.random.randint(0,N)
+            S_new[i], S_new[j] = S[j], S[i]
+        else:
+            # randomly swap a subset of cities
+            i = np.random.randint(0,N)
+            j = np.random.randint(0,N)
+            if i > j:
+                i,j = j,i
+            S_new[i:j] = S[i:j][::-1]
 
         #Annealing acceptance criterion
         if energy(S_new, coords) < energy(S, coords):
@@ -126,19 +98,12 @@ def anneal_path(coords, K):
 # Plots best path and coordinates
 # input : S      : order of best path
 #         E      : list of energies
-#         p_type : string describing problem
 #         coords : positions of stops, list of 2 or 3D arrays
-def check(S,E,p_type,coords):
-    if (p_type == 'random2D' or p_type == 'random3D' or p_type == 'circle'):
-        plt.scatter(coords[:,0],coords[:,1],color='black', label='Cities')
-        plt.plot(coords[S,0],coords[S,1],color='red', label='Best Path: E = %.2f' % (E))
-        plt.legend(loc='upper right')
-        plt.show()
-    elif (p_type == 'USA'):
-        plt.scatter(coords[:,1],coords[:,0],color='black')
-        plt.plot(coords[S,1],coords[S,0],color='red')
-        plt.legend()
-        plt.show()
+def check(S,E,coords):
+    plt.scatter(coords[:,0],coords[:,1],color='black', label='Cities')
+    plt.plot(coords[S,0],coords[S,1],color='red', label='Best Path: E = %.2f' % (E))
+    plt.legend(loc='upper right')
+    plt.show()
 
     return
 
@@ -150,8 +115,6 @@ def main():
                         help="problem name:\n"
                              "   circle   : 'N' cities arranged in a 'circle'\n"
                              "   random2D : a random assortment of cities in 2D space\n"
-                             "   random3D : a random assortment of cities in 3D space\n"
-                             "   USA      : the largest 'N' cities in the USA by population in 2D space\n"
                         )
     parser.add_argument("K",type=int,
                         help="max number of iterations")
@@ -173,9 +136,8 @@ def main():
 
     S,E     = anneal_path(coords,K)
     print(S)
-    #S,E     = greedy_path(coords)
 
-    check(S,E,p_type,coords)
+    check(S,E,coords)
 
 #=============================================
 
