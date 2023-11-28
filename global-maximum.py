@@ -22,15 +22,6 @@ import helper_functions as helper
 
 #===========================================
 # Probability functions to be maximized
-def charbonneau2(x,**kwargs):
-    r1s = (x[0]-0.5)**2 + (x[1]-0.5)**2
-    r2s = (x[0]-0.6)**2 + (x[1]-0.1)**2
-    s1s = 0.09
-    s2s = 0.0009
-    a   = 0.8
-    b   = 0.879008
-    return a*np.exp(-r1s/s1s)+b*np.exp(-r2s/s2s)
-
 def wave(x):
     if x >= 0 and x <= 2 * np.pi:
         y = np.sin(x) + np.sin(2*x) + np.sin(3*x)
@@ -48,31 +39,30 @@ def parabola1d(x):
 #         s    : global maximum
 #         pFNC : function to plot
 # output: plot of function
-def plot_function(x, y, s, pFNC):
+def plot_function(x, y, s, pFNC, a_type):
     if pFNC == parabola1d:
-        plt.title("Parabola Function")
+        if a_type == 'anneal':
+            plt.title("Parabola Function - Annealing")
+        elif a_type == 'hill':
+            plt.title("Parabola Function - Hill Climbing")
         plt.plot(x, y, 'b', label="Probability Function")
-        plt.plot(s, pFNC(s), 'r.', markersize=10, label="Global Maximum")
+        plt.vlines(s, ymin=0, ymax=pFNC(s), color='red', label="Global Maximum")
         plt.xlabel("x")
         plt.ylabel("f(x)")
         plt.legend(loc="upper right")
         plt.show()
     elif pFNC == wave:
-        plt.title("Wave Function")
+        if a_type == 'anneal':
+            plt.title("Wave Function - Annealing")
+        elif a_type == 'hill':
+            plt.title("Wave Function - Hill Climbing")
         plt.plot(x, y, 'b', label="Probability Function")
-        plt.plot(s, pFNC(s), 'r.', markersize=10, label="Global Maximum")
+        plt.vlines(s, ymin=0, ymax=pFNC(s), color='red', label="Global Maximum")
         plt.xlabel("x")
         plt.ylabel("f(x)")
         plt.legend(loc="upper right")
         plt.show()
-    elif pFNC == charbonneau2:
-        plt.title("Charbonneau 2D Function")
-        plt.plot(x, y, 'b', label="Probability Function")
-        plt.plot(s[0], s[1], 'r.', markersize=10, label="Global Maximum")
-        plt.xlabel("x")
-        plt.ylabel("f(x)")
-        plt.legend(loc="upper right")
-        plt.show()
+
     return
 
 #===========================================
@@ -105,6 +95,25 @@ def anneal(s0, delta, pFNC, kmax):
     return s_best, kmax
 
 #===========================================
+# Hill Climbing function
+# input : s0    : initial state
+#         delta : stepsize to determine new trial state x'
+#         pFNC  : function to maximize
+#         kmax  : max number of iterations
+# output: s     : maximum
+def hill_climb(s0, delta, pFNC, kmax):
+    s = s0
+    for k in range(kmax):
+        snew = s + delta * (2*np.random.rand(1) - 1 )
+
+        if pFNC(snew) > pFNC(s):
+            s = snew
+        else:
+            s = s
+
+    return s, kmax
+
+#===========================================
 # Initialize function
 # input : p_type : string describing problem
 # output: x, y   : x and y values of function to plot
@@ -121,11 +130,6 @@ def init(p_type):
         y = np.sin(x) + np.sin(2*x) + np.sin(3*x)
         s0 = np.random.uniform(0, 2*np.pi)
         pFNC = wave
-    elif p_type == 'charbonneau2':
-        x = np.linspace(0, 1, 1000)
-        y = charbonneau2(x)
-        s0 = np.random.uniform(0, 1, 2)
-        pFNC = charbonneau2
     else:
        print('[init]: invalid problem %s' % (p_type))
        exit()
@@ -138,7 +142,11 @@ def main():
                         help="problem name:\n"
                              "   parabola1d   : parabola function\n"
                              "   wave         : wave function with multiple global maxima\n"
-                             "   charbonneau2 : 2D Charbonneau function\n"
+                             )
+    parser.add_argument("a_type",type=str,
+                        help="algorithm name:\n"
+                            "   anneal   : simulated annealing\n"
+                            "   hill     : hill climbing\n"
                              )
     parser.add_argument("K",type=int,
                         help="max number of iterations")
@@ -148,13 +156,17 @@ def main():
 
     args                     = parser.parse_args()
     p_type                   = args.p_type
+    a_type                   = args.a_type
     K                        = args.K
     delta                    = args.delta
     x, y, s0, pFNC = init(p_type)
-
     
 
-    s, iters = anneal(s0, delta, pFNC, K)
+    if a_type == 'anneal':
+        s, iters = anneal(s0, delta, pFNC, K)
+    elif a_type == 'hill':
+        s, iters = hill_climb(s0, delta, pFNC, K)
+
 
     if pFNC == charbonneau2:
         s = s.tolist()
@@ -164,9 +176,9 @@ def main():
     else:
         s = float(s)
         print("Found maximum at x= %1.3f" % s)
-    print("Iterations: ", iters)
 
-    plot_function(x, y, s, pFNC)
+    print("Iterations: ", iters)
+    plot_function(x, y, s, pFNC, a_type)
 #===========================================
 
 main()
