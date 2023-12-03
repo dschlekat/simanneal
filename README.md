@@ -1,7 +1,9 @@
 # simanneal
-Semester-long project for PHYS 332 at UNC Chapel Hill on simulated annealing. (Prof: Dr. Fabian Heitsch)
+Semester-long project for PHYS 332 (Numerical Techniques for the Sciences II; Prof: Dr. Fabian Heitsch; Fall 2023) at UNC Chapel Hill on simulated annealing.
 
 Authors: Reece Clark, Hannah Perkins, Donovan Schlekat
+
+Code can be used and/or modified for any application with proper attribution.
 
 ## Files:
 
